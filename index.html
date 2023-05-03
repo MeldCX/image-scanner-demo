@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://storage.googleapis.com/assets.meld.cx/agent/1.0.42/Agent.js"></script>
+    <style>
+        body {
+            text-align: center;
+            font-family: sans-serif;
+        }
+
+        h1, h2 {
+            margin-top: 100px;
+        }
+
+        button {
+            margin-top: 60px;
+            width: 180px;
+            height: 100px;
+        }
+
+        pre {
+            text-align: left;
+            font-size: 10px;
+            display: table;
+            margin-top: 40px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+
+    </style>
+    <title>Image Scanner Demo</title>
+</head>
+
+<body>
+    <h1>Image Scanner Demo</h1>
+    <h2>Please position a document in the scanner face down aligned to the right and press SCAN...</h2>
+    <button id="scan">SCAN</button>
+    <pre id="result">Initialising...</pre>
+    <img id="preview" src=""/>
+
+    <script>
+
+        const scanButton = document.getElementById('scan');
+        const previewImage = document.getElementById('preview');
+        const resultData = document.getElementById('result');
+
+        const agent = window.Agent;
+
+
+        const sleep = timeout => new Promise(resolve => setTimeout(resolve, timeout));
+
+        const scan = async() => {
+            try {
+
+                console.log('SCAN - START');
+
+                const [scanner] = await agent.Scanner.getAllScanners();
+                if (!scanner) {
+                    resultData.innerHTML = 'Please connect a scanner and try again...';
+                    console.log(resultData.innerHTML);
+
+                    return;
+                }
+
+                // agent.Scanner.scanFiles(scanner.id, 'base64') - Return scanned image in Base64 encoding)
+                // agent.Scanner.scanFiles(scanner.id, 'hex') - Return scanned image in HEX encoding (each byte encoded as two hexadecimal characters)
+
+                const [base64Image] = await agent.Scanner.scanFiles(scanner.id, 'base64');
+                if (!base64Image) {
+                    resultData.innerHTML = 'Please position a document correctly and try again...';
+                    console.log(resultData.innerHTML);
+
+                    return;
+                }
+
+                previewImage.src = `data:${base64Image.mime};${base64Image.format},${base64Image.data}`;
+
+                resultData.innerHTML = 'Scanning completed';
+                console.log(resultData.innerHTML);
+
+            } catch (ex) {
+                resultData.innerHTML = ex.toString();
+                console.log(resultData.innerHTML);
+            } finally {
+                console.log('SCAN - END');
+            }
+        };
+
+        const initialise = async() => {
+            try {
+                await agent.onReadyAsync();
+
+                console.log('INITIALISE - START');
+
+                if (!agent.Scanner) {
+                    resultData.innerHTML = 'Scanner API is not supported';
+                    console.log(resultData.innerHTML);
+
+                    return;
+                }
+
+                const scanners = await agent.Scanner.getAllScanners();
+                if (!scanners || !scanners.length) {
+                    resultData.innerHTML = 'Please connect a scanner...';
+                    console.log(resultData.innerHTML);
+
+                    setTimeout(initialise, 5000);
+
+                    return;
+                }
+
+                scanButton.onclick = async() => {
+                    try {
+                        previewImage.src = '';
+                        resultData.innerHTML = '';
+                        scanButton.innerText = 'SCANNING...';
+                        scanButton.disabled = true;
+
+                        await scan();
+                    } finally {
+                        scanButton.innerText = 'SCAN';
+                        scanButton.disabled = false;
+                    }
+                };
+
+                resultData.innerHTML = 'Initialisation completed, waiting for document scanning...';
+                console.log(resultData.innerHTML);
+
+            } catch (ex) {
+                resultData.innerHTML = ex.toString();
+                console.log(resultData.innerHTML);
+            } finally {
+                console.log('INITIALISE - END');
+            }
+        };
+
+        initialise();
+
+    </script>
+</body>
+
+</html>
